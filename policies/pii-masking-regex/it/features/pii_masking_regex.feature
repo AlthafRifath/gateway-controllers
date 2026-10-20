@@ -549,12 +549,12 @@ Feature: PII masking regex policy
       | spec.displayName       | ${CTX:apiName}                   |
       | spec.version           | ${CTX:apiVersion}                |
       | spec.context           | ${CTX:apiContext}/$version       |
-      | spec.upstream.main.url | http://testbench:3000            |
+      | spec.upstream.main.url | ${CTX:captureUpstream}           |
       | spec.operations        | [{"method":"GET","path":"/get"},{"method":"POST","path":"/validate","policies":[{"name":"pii-masking-regex","version":"v1","params":{"customPIIEntities":[{"piiEntity":"EMAIL","piiRegex":"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+[.][a-zA-Z]{2,}"}],"jsonPath":"$.nonexistent.field","redactPII":false}}]}] |
     Then the resource creation response should indicate successful deployment
     And I send a "GET" request to "${CTX:apiContext}/${CTX:apiVersion}/get" until status 200
 
-    # The request is rejected before the upstream, so the backend stands in for the capture service.
+    # The policy rejects the request before it reaches the upstream.
     When I set header "Content-Type" to "application/json"
     And I send a "POST" request to "${CTX:apiContext}/${CTX:apiVersion}/validate" with body:
       """
