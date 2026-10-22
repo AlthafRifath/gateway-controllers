@@ -914,8 +914,9 @@ Feature: Analytics header filter policy
   # The raw collector payload is searched, so a sensitive value is caught wherever it appears in
   # an event, not only under its own header name. Each example sends one sensitive value. The
   # correlation value is also reflected by the backend as a response header, so it must be
-  # filtered from both sides of the event. Denying further request headers by name is covered
-  # by the request header deny mode scenarios.
+  # filtered from both sides of the event. The backend may also relay request headers as
+  # X-REQ-<name> response headers, so those names are denied on the response side too. Denying
+  # further request headers by name is covered by the request header deny mode scenarios.
   Scenario Outline: Filtered sensitive values are absent from the published analytics events (<case>)
     Given I generate a unique value from "ahf-sensitive-<case>" and store it as "apiName"
     And I generate a unique API version from "ahf-sensitive-<case>" and store it as "apiVersion"
@@ -927,7 +928,7 @@ Feature: Analytics header filter policy
       | spec.version           | ${CTX:apiVersion}                 |
       | spec.context           | ${CTX:apiContext}/$version        |
       | spec.upstream.main.url | http://testbench:3000/analytics-headers |
-      | spec.operations        | [{"method":"GET","path":"/sensitive-values","policies":[{"name":"analytics-header-filter","version":"v1","params":{"request":{"mode":"deny","headers":["authorization","x-correlation-id"]},"response":{"mode":"deny","headers":["x-correlation-response"]}}}]}] |
+      | spec.operations        | [{"method":"GET","path":"/sensitive-values","policies":[{"name":"analytics-header-filter","version":"v1","params":{"request":{"mode":"deny","headers":["authorization","x-correlation-id"]},"response":{"mode":"deny","headers":["x-correlation-response","x-req-authorization","x-req-x-correlation-id"]}}}]}] |
     Then the response should be successful
 
     When I clear all headers
