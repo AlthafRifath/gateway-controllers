@@ -1,0 +1,74 @@
+# --------------------------------------------------------------------
+# Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+#
+# WSO2 LLC. licenses this file to you under the Apache License,
+# Version 2.0 (the "License"); you may not use this file except
+# in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+# --------------------------------------------------------------------
+
+# Gateway configuration of the backend-jwt-gateway-signing block: jwt-auth
+# verifies callers against the testbench JWKS service, and backend-jwt signs
+# with the gateway signing key below, published at /.well-known/jwks.
+
+[[policy_configurations.jwtauth_v1.keymanagers]]
+name = "mock-jwks"
+issuer = "http://testbench:3001/token"
+
+[policy_configurations.jwtauth_v1.keymanagers.jwks.remote]
+uri = "http://testbench:3001/jwks"
+
+# TEST-ONLY KEY. Generated for this suite and used nowhere else; it signs only
+# tokens sent to the testbench. It is inline because a suite cannot mount a key
+# file the gateway runtime user may read.
+[signing]
+jwks_cache_max_age = "5m"
+
+[[signing.keys]]
+active = true
+inline = """
+-----BEGIN PRIVATE KEY-----
+MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCkN9yuOsSjvZdY
+7A8l1FS2FnaAcfj27DUKlk7bXd9blLqAdnFEpDov4Z9Acco1oMl6rEi6sOdQOsQG
+5v4pSAgtLU2bOhjNdmo41vwElNh7EKWkRpeSpPD+66EnSLTe1v0v+nZv+5F4eDBQ
+irhc48I3N/KApwPAbA/a7MGfBXSXxqR6KrdL3YShOS00HUPmX1JGQl9Sl6VvM36s
+nlewWTrWB9tyLI4Z4nQcOKpHN1a/CQOznWlVdwaFeEzB2qCMyXgpwhXC4zQdxy1M
+vw84zY/9sYCJD6yK/LhC8qe2BhOs3Lqx2qvphjyK80DMQDuGCQs7YuCHlJj+ACxR
+p5xqv4fZAgMBAAECggEAESTr2xyzjsyqUlRCuJZUSbZKpNpBPbYnS3Wpweko+myq
+k+LJrHrgwELz10yJ6dNhdXcrGKKDY7Le6EGRY0nr4JuMMJp+IGUubcS0Bt5rQ13X
+jTD5fgvORS7gYjOK/oC/ahTh7Ir9AvC5So9Q9BGrIwyqOpg1Ig+mEBsLk8iEBZxC
+VZ7CgxJUnR0Pt1wmVgUAcyGJBdf5FyGa6POKxZa3d1sHDLZ1hIE3tudPRquaXHMr
+yxbu8KkJ/VHJAuMviX3B6CqgwrBJrE4fYqhkksEWD4SZgkWZ3I2qze48bpL9slv3
+6o09QPvWEhSGTRFh7gtYFwozgCIz7FO+dBkqJxLxyQKBgQDlmAqjaO9TaJP9y6D2
+KUoeMUf8VDYgTHCqZPPiEInUwueO17ZFl89/k94Lh0UOYc+AZrmzeRDgnmg8lUyh
+IpPYf+rp6KArEw4mBPFH2qGH565IgtZ0mAJ8KyAsZlj1V3ZRpcZ95K1sxev01vBI
+UHuhh8dnr42lNjzCR+nYYxu8FwKBgQC3GvTlDEftccERArgbEjEF+wMPup7sEC09
+GUDOocZhIhL2x+dFVD/YnaSMHg1VTt/a6zTm5BuELWnGNwYWScJBYMjX/de2eudJ
+QMclw0hcxervVHTHnuJQA23Rtjeyc0U/3sMk4Y9v1pd7yoUxanxYoCPe08XYq90N
+ZuvaUiGhjwKBgHt4JGB0kh/c4Zle5JT852sNPZUpBGKiOQSpfa5ZDoZounZK8y7B
+0UjekE7K1AxD9X8rvzoRJU5mYdASyj7thWysffyEqX4ApV800Ty/Cpc3tLYyBnp1
+NQDpgEfgUn6+JlcKO5CAZfNVDOuCm32IKrRXfJj6A8aRQGOKoOtJgSTJAoGAA4rt
++hCGw71TsvSOg1eSwz7cDE3cDU0y0t/ONTFEGVUDcOrlOp4qrhI+wMdEEsZ35lBu
+sZjwP1pxlXgzEfNTYthwil1K8yjlmLE8KSriF4lsxjyoFcSpNEscsNYJtdYtHNM+
+i1Qh5lQMkkSU1yPsS/qtNv558XtBx6SaI5s7M1kCgYBD35MXvorRM6sadjEoS3il
+5DuyF3lHGhpsGEnbMZg5gbMBFBW+mGblA7L8xtaxpRvc0YlTLiKeEsqisxRL+qD7
+YKnxCnqV9AHSdaUn9I5o0WhqLDo6NB+fQl3iWR3uym3QfRXyvCL1Vpf21sozIeWv
+WweQLiICGT5R5Dj+oET8vg==
+-----END PRIVATE KEY-----
+"""
+
+# No policy-level signingkey: the [signing] key above signs backend JWTs.
+[policy_configurations.backendjwt_v1]
+issuer = "https://it-gateway.wso2.test"
+tokenexpiry = "15m"
+tokencaching = true
+cachemaxsize = 1000

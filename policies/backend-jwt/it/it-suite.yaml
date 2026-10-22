@@ -49,3 +49,20 @@ blocks:
         tags: "gateway-version>=1.2.0"
         features:
           - features/backend_jwt.feature
+
+  # Gateway signing ([signing], published at /.well-known/jwks) exists only in gateways newer than
+  # 1.2.0, so this block has its own gateway configuration and its runner is gated to them.
+  - name: backend-jwt-gateway-signing
+    parallel: 1
+    components:
+      - name: platform-gateway
+        db:
+          matrix: [sqlite, postgres, sqlserver]
+        addPoliciesFrom: policies
+        overlay: overlays/gateway-signing.toml
+      - name: testbench
+    runners:
+      - name: backend-jwt-gateway-signing
+        tags: "gateway-version>1.2.0"
+        features:
+          - features/backend_jwt_gateway_signing.feature
