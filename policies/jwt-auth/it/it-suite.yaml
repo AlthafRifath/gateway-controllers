@@ -49,3 +49,7 @@ blocks:
       - name: jwt-auth
         features:
           - features/jwt_auth.feature
+      - name: jwt-auth-scope-claim-rules
+        tags: "gateway-version>=1.2.0"
+        features:
+          - features/jwt_auth_scope_claim_rules.feature
