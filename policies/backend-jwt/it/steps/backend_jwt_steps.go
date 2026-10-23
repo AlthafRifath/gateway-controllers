@@ -31,6 +31,8 @@ import (
 	"fmt"
 	"maps"
 	"math/big"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -64,6 +66,8 @@ func (s *policySteps) register(sc *godog.ScenarioContext) {
 	sc.Step(`^the JWT "([^"]*)" should have been issued within the last (\d+) seconds$`, s.jwtShouldBeIssuedWithin)
 	sc.Step(`^the JWT "([^"]*)" should (be the same as|differ from) the JWT "([^"]*)"$`, s.jwtsShouldCompare)
 	sc.Step(`^the JWK Set "([^"]*)" should publish only public "([^"]*)" keys for "([^"]*)" signing$`, s.jwkSetShouldPublishPublicKeys)
+	sc.Step(`^I load the JWK Set from "([^"]*)" and store it as "([^"]*)"$`, s.loadJWKSet)
+	sc.Step(`^the JWT "([^"]*)" should (verify|not verify) against the only key in the JWK Set "([^"]*)"$`, s.jwtShouldVerifyWithOnlyKey)
 }
 
 var b64url = base64.RawURLEncoding
@@ -433,6 +437,64 @@ func (s *policySteps) jwkSetShouldPublishPublicKeys(ctx context.Context, setKey,
 		if k.Kty != kty || k.Alg != alg || k.Use != "sig" {
 			return fmt.Errorf("JWK %q is kty %q alg %q use %q, want kty %q alg %q use \"sig\"", kid, k.Kty, k.Alg, k.Use, kty, alg)
 		}
+	}
+	return nil
+}
+
+// loadJWKSet reads a JWK Set file of the suite, such as the public half of a policy-level key, and
+// stores it for the JWT steps. The path is relative to the suite directory, the working directory
+// of the suite test, and may not leave it.
+func (s *policySteps) loadJWKSet(ctx context.Context, path, key string) error {
+	clean := filepath.Clean(filepath.FromSlash(path))
+	if filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("JWK Set path %q must be relative to the suite directory", path)
+	}
+	raw, err := os.ReadFile(clean)
+	if err != nil {
+		return fmt.Errorf("reading the JWK Set %q: %w", path, err)
+	}
+	if _, err := parseJWKSet(string(raw)); err != nil {
+		return fmt.Errorf("JWK Set %q: %w", path, err)
+	}
+	local, ok := tcontext.LocalOf(ctx)
+	if !ok {
+		return fmt.Errorf("no scenario context to store %q in", key)
+	}
+	local.Set(key, string(raw))
+	return nil
+}
+
+// jwtShouldVerifyWithOnlyKey verifies a JWT the way a backend that pins one key does: with the
+// set's single key, whatever kid the JWT carries or lacks. The JWT's alg must still equal the
+// key's alg.
+func (s *policySteps) jwtShouldVerifyWithOnlyKey(ctx context.Context, tokenKey, outcome, setKey string) error {
+	token, err := s.resolveJWT(ctx, tokenKey)
+	if err != nil {
+		return err
+	}
+	keys, err := s.resolveJWKSet(ctx, setKey)
+	if err != nil {
+		return err
+	}
+	if len(keys) != 1 {
+		return fmt.Errorf("JWK Set %q has %d keys, want exactly one", setKey, len(keys))
+	}
+	var key jwk
+	for _, k := range keys {
+		key = k
+	}
+	verifyErr := func() error {
+		alg, _ := token.header["alg"].(string)
+		if alg != key.Alg {
+			return fmt.Errorf("JWT alg %q does not match the alg %q of key %q", alg, key.Alg, key.Kid)
+		}
+		return verifySignature(key, alg, []byte(token.signingInput), token.signature)
+	}()
+	switch {
+	case outcome == "verify" && verifyErr != nil:
+		return fmt.Errorf("JWT %q does not verify against the only key in JWK Set %q: %w", tokenKey, setKey, verifyErr)
+	case outcome == "not verify" && verifyErr == nil:
+		return fmt.Errorf("JWT %q verified against the only key in JWK Set %q", tokenKey, setKey)
 	}
 	return nil
 }

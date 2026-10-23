@@ -339,3 +339,93 @@ func TestJWTComparison(t *testing.T) {
 		t.Errorf("missing value: %v", err)
 	}
 }
+
+func TestJWTVerifiesWithTheOnlyKeyOfASet(t *testing.T) {
+	pinned := newECSigner(t, "ES256", "policy", elliptic.P256())
+	set := jwkSet(t, pinned.jwk(t))
+	noKid := pinned.sign(t, map[string]any{"alg": "ES256", "typ": "JWT"}, baseClaims())
+	steps := newPolicySteps(nil)
+
+	t.Run("a JWT without a kid verifies with the pinned key", func(t *testing.T) {
+		ctx := scenario(map[string]any{"jwt": noKid, "jwks": set})
+		if err := steps.jwtShouldVerifyWithOnlyKey(ctx, "jwt", "verify", "jwks"); err != nil {
+			t.Fatalf("verify: %v", err)
+		}
+		if err := steps.jwtShouldVerifyWithOnlyKey(ctx, "jwt", "not verify", "jwks"); err == nil {
+			t.Fatal("the negative form passed for a JWT that verifies")
+		}
+	})
+
+	failures := map[string]string{
+		"signed by another key":           newECSigner(t, "ES256", "policy", elliptic.P256()).sign(t, map[string]any{"alg": "ES256"}, baseClaims()),
+		"alg differs from the pinned key": newRSASigner(t, "RS256", "gw").token(t, baseClaims()),
+	}
+	for name, token := range failures {
+		t.Run(name, func(t *testing.T) {
+			ctx := scenario(map[string]any{"jwt": token, "jwks": set})
+			if err := steps.jwtShouldVerifyWithOnlyKey(ctx, "jwt", "verify", "jwks"); err == nil {
+				t.Fatal("verification passed")
+			}
+			if err := steps.jwtShouldVerifyWithOnlyKey(ctx, "jwt", "not verify", "jwks"); err != nil {
+				t.Fatalf("the negative form failed: %v", err)
+			}
+		})
+	}
+
+	t.Run("a set with more than one key is rejected", func(t *testing.T) {
+		ctx := scenario(map[string]any{"jwt": noKid, "jwks": jwkSet(t, pinned.jwk(t), newRSASigner(t, "RS256", "gw").jwk(t))})
+		if err := steps.jwtShouldVerifyWithOnlyKey(ctx, "jwt", "not verify", "jwks"); err == nil {
+			t.Fatal("a two-key set was accepted")
+		}
+	})
+
+	t.Run("missing context values", func(t *testing.T) {
+		if err := steps.jwtShouldVerifyWithOnlyKey(scenario(nil), "jwt", "verify", "jwks"); err == nil {
+			t.Fatal("verification passed with no stored values")
+		}
+	})
+}
+
+func TestLoadJWKSet(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	pinned := newECSigner(t, "ES256", "policy", elliptic.P256())
+	set := jwkSet(t, pinned.jwk(t))
+	if err := os.MkdirAll(filepath.Join("resources", "keys"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join("resources", "keys", "policy.jwks.json"), []byte(set), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile("private.jwks.json", []byte(`{"keys":[{"kty":"EC","kid":"k","d":"secret"}]}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	steps := newPolicySteps(nil)
+
+	ctx := scenario(nil)
+	if err := steps.loadJWKSet(ctx, "resources/keys/policy.jwks.json", "policyJwks"); err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	if got, err := tcontext.ResolveString(ctx, "policyJwks"); err != nil || got != set {
+		t.Fatalf("stored JWK Set = %q, %v", got, err)
+	}
+
+	for name, path := range map[string]string{
+		"missing file":           "resources/keys/absent.jwks.json",
+		"absolute path":          filepath.Join(dir, "resources", "keys", "policy.jwks.json"),
+		"path leaving the suite": "../policy.jwks.json",
+		"private key material":   "private.jwks.json",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := steps.loadJWKSet(scenario(nil), path, "policyJwks"); err == nil {
+				t.Fatalf("loaded %q", path)
+			}
+		})
+	}
+
+	t.Run("no scenario context", func(t *testing.T) {
+		if err := steps.loadJWKSet(context.Background(), "resources/keys/policy.jwks.json", "policyJwks"); err == nil {
+			t.Fatal("stored a JWK Set without a scenario context")
+		}
+	})
+}

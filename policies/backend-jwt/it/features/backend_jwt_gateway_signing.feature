@@ -40,7 +40,7 @@ Feature: Backend jwt policy signed with the gateway signing key
     And the response header "ETag" should exist
     And the JSON response array field "keys" should have 1 item
     When I store the response body as "gatewayJwks"
-    Then the JWK Set "gatewayJwks" should publish only public "RSA" keys for "RS256" signing
+    Then the JWK Set "gatewayJwks" should publish only public "EC" keys for "ES256" signing
 
   Scenario: backend-jwt with default parameters forwards the caller identity in a JWT that verifies against the gateway JWKS
     Given I generate a unique value from "backend-jwt-default" and store it as "apiName"
@@ -68,7 +68,9 @@ Feature: Backend jwt policy signed with the gateway signing key
     Then the JWT "backendJwt" should verify against the JWK Set "gatewayJwks"
     And the JWT "backendJwt" should not verify against the JWK Set "gatewayJwks" once its claims are altered
     # Header: alg and kid come from the gateway signing key, never from the policy.
-    And the JWT "backendJwt" header "alg" should be "RS256"
+    And the JWT "backendJwt" header "alg" should be "ES256"
+    # The kid is the RFC 7638 thumbprint of the framework's fixed active.pem test key.
+    And the JWT "backendJwt" header "kid" should be "GqWj6qPTMk3medznt-SHvWjANJNmVkHUtMMUhRWhV3I"
     And the JWT "backendJwt" header "typ" should be "JWT"
     And the JWT "backendJwt" header "jku" should not exist
     # Body: system claims from [policy_configurations.backendjwt_v1].
@@ -110,7 +112,7 @@ Feature: Backend jwt policy signed with the gateway signing key
     And I send a "GET" request to "/.well-known/jwks"
     And I store the response body as "gatewayJwks"
     Then the JWT "backendJwt" should verify against the JWK Set "gatewayJwks"
-    And the JWT "backendJwt" header "alg" should be "RS256"
+    And the JWT "backendJwt" header "alg" should be "ES256"
     And the JWT "backendJwt" should expire 300 seconds after it was issued
     And the JWT "backendJwt" claim "sub" should be "test-user"
     And the JWT "backendJwt" claim "tenant" should be "acme"
