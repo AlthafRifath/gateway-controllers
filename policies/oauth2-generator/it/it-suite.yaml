@@ -49,3 +49,7 @@ blocks:
         tags: "gateway-version>1.2.0"
         features:
           - features/oauth2_generator.feature
+      - name: oauth2-auth
+        tags: "gateway-version>1.2.0"
+        features:
+          - features/oauth2_auth.feature
