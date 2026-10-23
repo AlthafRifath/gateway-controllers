@@ -27,7 +27,7 @@ Every setting can be configured per policy attachment or gateway-wide. An attach
 
 ## Configuration
 
-The policy uses a two-level configuration. Every parameter can be set gateway-wide in `config.toml`, and an attachment can override it in the API definition. Where both levels set the same parameter, **the attachment value wins**.
+The policy uses a two-level configuration. The guardrail identity and AWS credentials can be set gateway-wide in `config.toml`, and an attachment can override them in the API definition. Where both levels set the same parameter, the attachment value wins. The `request` and `response` settings are configured only on the attachment.
 
 ### System Parameters (from config.toml)
 
