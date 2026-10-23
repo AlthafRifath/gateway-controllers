@@ -123,29 +123,22 @@ jobs:
 
       # One run per gateway version executes the suite of every selected policy in turn and fails
       # if any of them fails.
-      # The suites run on the testbench image published with the pinned framework release. A policy's
-      # suite can pin a newer framework than the shared module, so provide the image of every pinned
-      # release. Pull it when this repository can, and otherwise build the same image from the
-      # pinned module's source, which is what the release publishes.
-      - name: Provide the testbench images
-        working-directory: gateway-controllers
+      # The suites run on the testbench image published with the pinned framework release. Pull it
+      # when this repository can, and otherwise build the same image from the pinned module's
+      # source, which is what the release publishes.
+      - name: Provide the testbench image
+        working-directory: gateway-controllers/tests/it
         run: |
           set -euo pipefail
           module=github.com/wso2/api-platform/tests/framework
-          declare -A provided=()
-          for gomod in tests/it/go.mod policies/*/it/go.mod; do
-            moddir="$(dirname "$gomod")"
-            (cd "$moddir" && go mod download "$module")
-            version="$(cd "$moddir" && go list -m -f '{{.Version}}' "$module")"
-            [ -n "${provided[$version]:-}" ] && continue
-            provided[$version]=1
-            image="ghcr.io/wso2/api-platform/testbench:${version#v}"
-            if docker pull "$image"; then
-              continue
-            fi
-            dir="$(cd "$moddir" && go list -m -f '{{.Dir}}' "$module")"
-            docker build -f "$dir/testbench/Dockerfile" -t "$image" "$dir"
-          done
+          go mod download "$module"
+          version="$(go list -m -f '{{.Version}}' "$module")"
+          image="ghcr.io/wso2/api-platform/testbench:${version#v}"
+          if docker pull "$image"; then
+            exit 0
+          fi
+          dir="$(go list -m -f '{{.Dir}}' "$module")"
+          docker build -f "$dir/testbench/Dockerfile" -t "$image" "$dir"
 
       - name: Run the integration suites of the selected policies
         working-directory: gateway-controllers
