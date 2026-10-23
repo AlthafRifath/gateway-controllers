@@ -48,3 +48,15 @@ blocks:
       - name: advanced-ratelimit
         features:
           - features/advanced_ratelimit.feature
+      - name: ratelimit-headers
+        features:
+          - features/ratelimit_headers.feature
+      - name: ratelimit-cost-extraction
+        features:
+          - features/ratelimit_cost_extraction.feature
+      - name: ratelimit-key-extraction
+        features:
+          - features/ratelimit_key_extraction.feature
+      - name: ratelimit-multi-quota
+        features:
+          - features/ratelimit_multi_quota.feature
