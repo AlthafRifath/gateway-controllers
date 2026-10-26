@@ -28,7 +28,6 @@ jobs:
   detect:
     name: Select policies
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
     outputs:
       policies: ${{ steps.select.outputs.policies }}
       has_tests: ${{ steps.select.outputs.has_tests }}
@@ -59,7 +58,6 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_tests == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
     steps:
       - name: Checkout gateway-controllers
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -86,7 +84,6 @@ jobs:
     needs: detect
     if: needs.detect.outputs.has_tests == 'true'
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
     strategy:
       fail-fast: false
       max-parallel: 2
